@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Kasir Pro - Manajemen & Statistik</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Bagian Kiri: Katalog Produk & Statistik / Riwayat -->
+        <div class="left-section">
+            <!-- Statistik Pesanan -->
+            <div class="stats-section">
+                <div class="stat-card">
+                    <h4>Total Pesanan</h4>
+                    <p id="stat-total">0</p>
+                </div>
+                <div class="stat-card">
+                    <h4>Sedang Diproses</h4>
+                    <p id="stat-process">0</p>
+                </div>
+                <div class="stat-card">
+                    <h4>Selesai</h4>
+                    <p id="stat-completed">0</p>
+                </div>
+            </div>
+
+            <!-- Katalog Produk & Manajemen Menu -->
+            <div class="product-section">
+                <div class="section-header">
+                    <h2>Katalog Produk / Menu</h2>
+                    <button id="open-add-product-modal" class="btn-primary">+ Tambah Menu</button>
+                </div>
+                <div id="product-list" class="product-grid"></div>
+            </div>
+
+            <!-- Riwayat Pesanan -->
+            <div class="history-section">
+                <h2>Riwayat Pesanan</h2>
+                <div class="history-container">
+                    <table id="history-table">
+                        <thead>
+                            <tr>
+                                <th>No. TRX</th>
+                                <th>Pembeli</th>
+                                <th>Waktu</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-list">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: #7f8c8d;">Belum ada riwayat transaksi.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bagian Kanan: Keranjang, Diskon & Pembayaran -->
+        <div class="cart-section">
+            <h2>Keranjang Belanja</h2>
+            
+            <!-- Input Nama Pembeli -->
+            <div class="customer-box">
+                <label for="customer-name">Nama Pembeli:</label>
+                <input type="text" id="customer-name" placeholder="Masukkan nama pembeli...">
+            </div>
+
+            <div class="cart-items-container">
+                <table id="cart-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Harga</th>
+                            <th>Qty</th>
+                            <th>Subtotal</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cart-list">
+                        <tr><td colspan="5" style="text-align: center; color: #a0aec0;">Keranjang kosong</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="cart-summary">
+                <!-- Fitur Diskon -->
+                <div class="discount-box">
+                    <label>Diskon:</label>
+                    <select id="discount-type">
+                        <option value="percent">Persen (%)</option>
+                        <option value="nominal">Nominal (Rp)</option>
+                    </select>
+                    <input type="number" id="discount-value" placeholder="Nilai" value="0">
+                </div>
+
+                <div class="summary-row">
+                    <span>Subtotal:</span>
+                    <span id="subtotal-price">Rp 0</span>
+                </div>
+                <div class="summary-row">
+                    <span>Potongan Diskon:</span>
+                    <span id="discount-amount">Rp 0</span>
+                </div>
+                <div class="summary-row total-row">
+                    <span>Total Akhir:</span>
+                    <span id="total-price">Rp 0</span>
+                </div>
+
+                <!-- Fitur Pembayaran & Kembalian -->
+                <div class="payment-box">
+                    <label for="cash-given">Jumlah Uang Tunai:</label>
+                    <input type="number" id="cash-given" placeholder="Masukkan nominal uang">
+                    <button id="pay-btn" class="btn-success">Bayar & Cetak Struk</button>
+                </div>
+                
+                <div class="summary-row change-row">
+                    <span>Uang Kembalian:</span>
+                    <span id="change-due">Rp 0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Form Tambah/Edit Menu -->
+    <div id="product-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="product-modal-title">Tambah Menu Baru</h3>
+            <form id="product-form">
+                <input type="hidden" id="edit-product-id">
+                <div class="form-group">
+                    <label>Nama Menu:</label>
+                    <input type="text" id="p-name" required placeholder="Contoh: Es Jeruk">
+                </div>
+                <div class="form-group">
+                    <label>Harga (Rp):</label>
+                    <input type="number" id="p-price" required placeholder="Contoh: 8000">
+                </div>
+                <div class="form-group">
+                    <label>URL Foto Menu:</label>
+                    <input type="url" id="p-image" required placeholder="https://example.com/gambar.jpg">
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-primary">Simpan</button>
+                    <button type="button" id="close-product-modal" class="btn-secondary">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Struk Pembayaran -->
+    <div id="receipt-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="receipt-header">
+                <h3>STRUK PEMBAYARAN</h3>
+                <p>Toko Kasir Modern Pro</p>
+                <hr style="border: dashed 1px #ccc; margin: 10px 0;">
+            </div>
+            <div id="receipt-body" class="receipt-body"></div>
+            <div class="receipt-footer">
+                <button id="print-receipt-btn" class="btn-primary">Cetak</button>
+                <button id="close-modal-btn" class="btn-secondary">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
