@@ -1,12 +1,15 @@
 
-let defaultProducts = [
-    { id: 1, name: "Kopi Hitam", price: 15000, image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=300" },
-    { id: 2, name: "Es Teh Manis", price: 5000, image: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=300" },
-    { id: 3, name: "Roti Bakar", price: 12000, image: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=300" },
-    { id: 4, name: "Nasi Goreng", price: 20000, image: "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300" }
-];
+"use strict";
 
-// PENYIMPANAN DATA
+// =====================================
+// 1. PENYIMPANAN DATA
+// =====================================
+
+const STORAGE_KEYS = {
+    products: "kasir_products",
+    orders: "kasir_orders"
+};
+
 function loadData(key, fallback) {
     try {
         const data = localStorage.getItem(key);
@@ -17,27 +20,61 @@ function loadData(key, fallback) {
     }
 }
 
-let products = loadData("kasir_products", defaultProducts);
-let cart = [];
-let orderHistory = loadData("kasir_orders", []);
-
-function saveData() {
-    localStorage.setItem("kasir_products", JSON.stringify(products));
-    localStorage.setItem("kasir_orders", JSON.stringify(orderHistory));
+function saveData(key, data) {
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+        return true;
+    } catch (error) {
+        console.error(error);
+        alert("Gagal menyimpan data. Periksa penyimpanan browser.");
+        return false;
+    }
 }
 
-function formatRupiah(value) {
+// =====================================
+// 2. DATA PRODUK
+// =====================================
+
+const defaultProducts = [
+    { id: 1, name: "Kopi Hitam", price: 15000, image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=300" },
+    { id: 2, name: "Es Teh Manis", price: 5000, image: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=300" },
+    { id: 3, name: "Roti Bakar", price: 12000, image: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=300" },
+    { id: 4, name: "Nasi Goreng", price: 20000, image: "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300" }
+];
+
+let products = loadData(STORAGE_KEYS.products, defaultProducts);
+let orderHistory = loadData(STORAGE_KEYS.orders, []);
+let cart = [];
+
+if (!Array.isArray(products)) products = defaultProducts;
+if (!Array.isArray(orderHistory)) orderHistory = [];
+
+function saveProducts() {
+    return saveData(STORAGE_KEYS.products, products);
+}
+
+function saveOrders() {
+    return saveData(STORAGE_KEYS.orders, orderHistory);
+}
+
+function rupiah(value) {
     return "Rp " + Number(value || 0).toLocaleString("id-ID");
 }
 
-// ELEMEN DOM
+// =====================================
+// 3. ELEMEN HTML
+// =====================================
+
 const productListEl = document.getElementById("product-list");
 const cartListEl = document.getElementById("cart-list");
+
 const subtotalPriceEl = document.getElementById("subtotal-price");
 const discountAmountEl = document.getElementById("discount-amount");
 const totalPriceEl = document.getElementById("total-price");
+
 const cashGivenEl = document.getElementById("cash-given");
 const changeDueEl = document.getElementById("change-due");
+
 const payBtn = document.getElementById("pay-btn");
 const discountTypeEl = document.getElementById("discount-type");
 const discountValueEl = document.getElementById("discount-value");
@@ -53,6 +90,7 @@ const openAddProductModalBtn = document.getElementById("open-add-product-modal")
 const closeProductModalBtn = document.getElementById("close-product-modal");
 const productForm = document.getElementById("product-form");
 const productModalTitle = document.getElementById("product-modal-title");
+
 const editProductIdEl = document.getElementById("edit-product-id");
 const pNameEl = document.getElementById("p-name");
 const pPriceEl = document.getElementById("p-price");
@@ -63,7 +101,10 @@ const receiptBody = document.getElementById("receipt-body");
 const closeModalBtn = document.getElementById("close-modal-btn");
 const printReceiptBtn = document.getElementById("print-receipt-btn");
 
-// RENDER PRODUK
+// =====================================
+// 4. KATALOG PRODUK
+// =====================================
+
 function renderProducts() {
     productListEl.innerHTML = "";
 
@@ -72,13 +113,14 @@ function renderProducts() {
         card.className = "product-card";
 
         card.innerHTML = `
-            <img src="${product.image}" alt="${product.name}" class="product-img"
-            onerror="this.src='https://via.placeholder.com/150'">
+            <img src="${product.image}" alt="${product.name}"
+                 class="product-img"
+                 onerror="this.src='https://via.placeholder.com/150'">
 
             <div class="product-info">
                 <div>
                     <h3>${product.name}</h3>
-                    <p>${formatRupiah(product.price)}</p>
+                    <p>${rupiah(product.price)}</p>
                 </div>
 
                 <div class="product-actions-btn">
@@ -93,12 +135,15 @@ function renderProducts() {
     });
 }
 
-// TAMBAH KE KERANJANG
-function addToCart(productId) {
-    const product = products.find(p => p.id === productId);
+// =====================================
+// 5. KERANJANG
+// =====================================
+
+function addToCart(id) {
+    const product = products.find(p => p.id === id);
     if (!product) return;
 
-    const item = cart.find(p => p.id === productId);
+    const item = cart.find(p => p.id === id);
 
     if (item) {
         item.qty++;
@@ -109,67 +154,64 @@ function addToCart(productId) {
     renderCart();
 }
 
-// UBAH QTY
-function updateQty(productId, delta) {
-    const item = cart.find(p => p.id === productId);
+function updateQty(id, delta) {
+    const item = cart.find(p => p.id === id);
     if (!item) return;
 
     item.qty += delta;
 
     if (item.qty <= 0) {
-        cart = cart.filter(p => p.id !== productId);
+        cart = cart.filter(p => p.id !== id);
     }
 
     renderCart();
 }
 
-// HITUNG TOTAL
+// =====================================
+// 6. DISKON DAN TOTAL
+// =====================================
+
+function getDiscount() {
+    return Math.max(0, Math.min(100, Number(discountValueEl.value) || 0));
+}
+
 function calculateTotals() {
     const subtotal = cart.reduce(
         (sum, item) => sum + item.price * item.qty, 0
     );
 
-    const percent = Math.max(
-        0, Math.min(100, Number(discountValueEl.value) || 0)
-    );
+    const discountPercent = getDiscount();
+    const discount = subtotal * discountPercent / 100;
+    const total = subtotal - discount;
 
-    const discountAmount = subtotal * percent / 100;
-    const finalTotal = subtotal - discountAmount;
+    subtotalPriceEl.innerText = rupiah(subtotal);
+    discountAmountEl.innerText = "-" + rupiah(discount);
+    totalPriceEl.innerText = rupiah(total);
 
-    subtotalPriceEl.innerText = formatRupiah(subtotal);
-    discountAmountEl.innerText = "-" + formatRupiah(discountAmount);
-    totalPriceEl.innerText = formatRupiah(finalTotal);
-
-    calculateChange(finalTotal);
-
-    return finalTotal;
+    calculateChange(total);
+    return total;
 }
 
-// HITUNG KEMBALIAN
-function calculateChange(finalTotal) {
+function calculateChange(total) {
     const cash = Number(cashGivenEl.value) || 0;
 
     changeDueEl.innerText =
-        cash >= finalTotal && finalTotal > 0
-            ? formatRupiah(cash - finalTotal)
-            : formatRupiah(0);
+        cash >= total && total > 0
+            ? rupiah(cash - total)
+            : rupiah(0);
 }
 
-// RENDER KERANJANG
 function renderCart() {
     if (cart.length === 0) {
         cartListEl.innerHTML = `
-            <tr>
-                <td colspan="5" style="text-align:center;color:#a0aec0">
-                    Keranjang kosong
-                </td>
-            </tr>
-        `;
+            <tr><td colspan="5" style="text-align:center">
+                Keranjang kosong
+            </td></tr>`;
 
-        subtotalPriceEl.innerText = formatRupiah(0);
-        discountAmountEl.innerText = "-" + formatRupiah(0);
-        totalPriceEl.innerText = formatRupiah(0);
-        changeDueEl.innerText = formatRupiah(0);
+        subtotalPriceEl.innerText = rupiah(0);
+        discountAmountEl.innerText = "-" + rupiah(0);
+        totalPriceEl.innerText = rupiah(0);
+        changeDueEl.innerText = rupiah(0);
         return;
     }
 
@@ -180,14 +222,13 @@ function renderCart() {
 
         row.innerHTML = `
             <td>${item.name}</td>
-            <td>${formatRupiah(item.price)}</td>
+            <td>${rupiah(item.price)}</td>
             <td>${item.qty}</td>
-            <td>${formatRupiah(item.price * item.qty)}</td>
+            <td>${rupiah(item.price * item.qty)}</td>
             <td>
                 <button class="qty-btn" onclick="updateQty(${item.id},1)">+</button>
                 <button class="qty-btn" onclick="updateQty(${item.id},-1)">-</button>
-            </td>
-        `;
+            </td>`;
 
         cartListEl.appendChild(row);
     });
@@ -195,29 +236,30 @@ function renderCart() {
     calculateTotals();
 }
 
-// STATISTIK
+// =====================================
+// 7. STATISTIK
+// =====================================
+
 function updateStats() {
     statTotalEl.innerText = orderHistory.length;
 
-    statProcessEl.innerText = orderHistory.filter(
-        o => o.status === "Sedang Diproses"
-    ).length;
+    statProcessEl.innerText =
+        orderHistory.filter(o => o.status === "Sedang Diproses").length;
 
-    statCompletedEl.innerText = orderHistory.filter(
-        o => o.status === "Selesai"
-    ).length;
+    statCompletedEl.innerText =
+        orderHistory.filter(o => o.status === "Selesai").length;
 }
 
-// RIWAYAT TRANSAKSI
+// =====================================
+// 8. RIWAYAT TRANSAKSI
+// =====================================
+
 function renderHistory() {
     if (orderHistory.length === 0) {
         historyListEl.innerHTML = `
-            <tr>
-                <td colspan="4" style="text-align:center;color:#7f8c8d">
-                    Belum ada riwayat transaksi.
-                </td>
-            </tr>
-        `;
+            <tr><td colspan="4" style="text-align:center">
+                Belum ada riwayat transaksi.
+            </td></tr>`;
 
         updateStats();
         return;
@@ -228,29 +270,26 @@ function renderHistory() {
     orderHistory.forEach((order, index) => {
         const row = document.createElement("tr");
 
-        const badgeClass =
-            order.status === "Selesai"
-                ? "badge-completed"
-                : "badge-process";
+        const badge = order.status === "Selesai"
+            ? "badge-completed"
+            : "badge-process";
 
         row.innerHTML = `
             <td>${order.receiptNo}</td>
             <td>${order.customer}</td>
-
             <td>
-                <span class="badge ${badgeClass}"
-                    onclick="toggleStatus(${index})"
-                    style="cursor:pointer">
+                <span class="badge ${badge}"
+                      onclick="toggleStatus(${index})"
+                      style="cursor:pointer">
                     ${order.status}
                 </span>
             </td>
-
             <td>
-                <button class="btn-detail" onclick="showReceipt(${index})">
+                <button class="btn-detail"
+                        onclick="showReceipt(${index})">
                     Struk
                 </button>
-            </td>
-        `;
+            </td>`;
 
         historyListEl.appendChild(row);
     });
@@ -258,7 +297,6 @@ function renderHistory() {
     updateStats();
 }
 
-// UBAH STATUS
 function toggleStatus(index) {
     if (!orderHistory[index]) return;
 
@@ -267,18 +305,20 @@ function toggleStatus(index) {
             ? "Sedang Diproses"
             : "Selesai";
 
-    saveData();
+    if (!saveOrders()) return;
     renderHistory();
 }
 
-// TAMBAH MENU
+// =====================================
+// 9. TAMBAH DAN EDIT PRODUK
+// =====================================
+
 openAddProductModalBtn.addEventListener("click", () => {
     productModalTitle.innerText = "Tambah Menu Baru";
     editProductIdEl.value = "";
     pNameEl.value = "";
     pPriceEl.value = "";
     pImageEl.value = "";
-
     productModal.classList.remove("hidden");
 });
 
@@ -286,7 +326,6 @@ closeProductModalBtn.addEventListener("click", () => {
     productModal.classList.add("hidden");
 });
 
-// EDIT MENU
 function openEditProduct(id) {
     const product = products.find(p => p.id === id);
     if (!product) return;
@@ -300,7 +339,6 @@ function openEditProduct(id) {
     productModal.classList.remove("hidden");
 }
 
-// SIMPAN MENU
 productForm.addEventListener("submit", event => {
     event.preventDefault();
 
@@ -310,7 +348,7 @@ productForm.addEventListener("submit", event => {
     const image = pImageEl.value.trim();
 
     if (!name || !Number.isFinite(price) || price < 0 || !image) {
-        alert("Mohon isi data menu dengan benar!");
+        alert("Isi data menu dengan benar!");
         return;
     }
 
@@ -330,71 +368,94 @@ productForm.addEventListener("submit", event => {
         products.push({ id: newId, name, price, image });
     }
 
-    saveData();
-    renderProducts();
+    if (!saveProducts()) return;
+
     productModal.classList.add("hidden");
+    renderProducts();
+    renderCart();
 });
 
-// HAPUS MENU
 function deleteProduct(id) {
     if (!confirm("Yakin ingin menghapus menu ini?")) return;
 
+    const oldProducts = products;
     products = products.filter(p => p.id !== id);
 
-    saveData();
-    renderProducts();
-}
-
-// PROSES PEMBAYARAN
-payBtn.addEventListener("click", () => {
-    if (cart.length === 0) {
-        alert("Keranjang belanja masih kosong!");
+    if (!saveProducts()) {
+        products = oldProducts;
         return;
     }
 
-    const customerName = customerNameEl.value.trim() || "Umum";
+    cart = cart.filter(p => p.id !== id);
+
+    renderProducts();
+    renderCart();
+}
+
+// =====================================
+// 10. PEMBAYARAN
+// =====================================
+
+function generateReceiptNo() {
+    return "TRX-" + Date.now() + "-" +
+        Math.floor(Math.random() * 1000);
+}
+
+payBtn.addEventListener("click", () => {
+    if (cart.length === 0) {
+        alert("Keranjang masih kosong!");
+        return;
+    }
+
+    const customer = customerNameEl.value.trim() || "Umum";
 
     const subtotal = cart.reduce(
         (sum, item) => sum + item.price * item.qty, 0
     );
 
-    const discountPercent = Math.max(
-        0, Math.min(100, Number(discountValueEl.value) || 0)
-    );
-
+    const discountPercent = getDiscount();
     const discountAmount = subtotal * discountPercent / 100;
     const finalTotal = subtotal - discountAmount;
     const cash = Number(cashGivenEl.value) || 0;
 
     if (cash < finalTotal) {
-        alert("Uang tunai kurang dari total pembayaran!");
+        alert("Uang tunai tidak mencukupi!");
         return;
     }
 
-    const change = cash - finalTotal;
+    const items = cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        qty: item.qty,
+        subtotal: item.price * item.qty
+    }));
 
     const newOrder = {
-        receiptNo: "TRX-" + Date.now(),
-        customer: customerName,
-        date: new Date().toLocaleString("id-ID"),
-        items: cart.map(item => ({ ...item })),
-        subtotal,
-        discountPercent,
-        discountAmount,
-        finalTotal,
-        cash,
-        change,
+        receiptNo: generateReceiptNo(),
+        customer: customer,
+        date: new Date().toISOString(),
+        items: items,
+        subtotal: subtotal,
+        discountPercent: discountPercent,
+        discountAmount: discountAmount,
+        finalTotal: finalTotal,
+        cash: cash,
+        change: cash - finalTotal,
         status: "Selesai"
     };
 
-    // SIMPAN TRANSAKSI SECARA OTOMATIS
     orderHistory.unshift(newOrder);
-    saveData();
+
+    if (!saveOrders()) {
+        orderHistory.shift();
+        alert("Transaksi gagal disimpan. Pembayaran dibatalkan.");
+        return;
+    }
 
     renderHistory();
     showReceiptModalContent(newOrder);
 
-    // KOSONGKAN KERANJANG
     cart = [];
     customerNameEl.value = "";
     cashGivenEl.value = "";
@@ -403,7 +464,10 @@ payBtn.addEventListener("click", () => {
     renderCart();
 });
 
-// TAMPILKAN STRUK
+// =====================================
+// 11. CETAK DAN LIHAT STRUK
+// =====================================
+
 function showReceipt(index) {
     const order = orderHistory[index];
     if (!order) return;
@@ -415,28 +479,28 @@ function showReceiptModalContent(order) {
     let html = `
         <strong>No Transaksi:</strong> ${order.receiptNo}<br>
         <strong>Nama Pembeli:</strong> ${order.customer}<br>
-        <strong>Tanggal:</strong> ${order.date || "-"}<br>
+        <strong>Tanggal:</strong>
+        ${new Date(order.date).toLocaleString("id-ID")}
         <hr>
     `;
 
     order.items.forEach(item => {
         html += `
             ${item.name}<br>
-            ${item.qty} x ${formatRupiah(item.price)}
-            = ${formatRupiah(item.price * item.qty)}<br>
+            ${item.qty} x ${rupiah(item.price)}
+            = ${rupiah(item.subtotal ?? item.price * item.qty)}
+            <br><br>
         `;
     });
 
     html += `
         <hr>
-        Subtotal: ${formatRupiah(order.subtotal)}<br>
-        Diskon (${order.discountPercent || 0}%):
-        -${formatRupiah(order.discountAmount)}<br>
-
-        <strong>Total Akhir: ${formatRupiah(order.finalTotal)}</strong><br>
-        Tunai: ${formatRupiah(order.cash)}<br>
-        Kembalian: ${formatRupiah(order.change)}<br>
-
+        Subtotal: ${rupiah(order.subtotal)}<br>
+        Diskon (${order.discountPercent ?? 0}%):
+        -${rupiah(order.discountAmount)}<br>
+        <strong>Total Akhir: ${rupiah(order.finalTotal)}</strong><br>
+        Tunai: ${rupiah(order.cash)}<br>
+        Kembalian: ${rupiah(order.change)}<br>
         <hr>
         <center>Terima Kasih Atas Kunjungan Anda!</center>
     `;
@@ -445,7 +509,6 @@ function showReceiptModalContent(order) {
     receiptModal.classList.remove("hidden");
 }
 
-// MODAL STRUK
 closeModalBtn.addEventListener("click", () => {
     receiptModal.classList.add("hidden");
 });
@@ -454,7 +517,10 @@ printReceiptBtn.addEventListener("click", () => {
     window.print();
 });
 
-// DISKON PERSEN SAJA
+// =====================================
+// 12. INPUT DISKON DAN UANG
+// =====================================
+
 discountTypeEl.value = "percent";
 discountTypeEl.disabled = true;
 
@@ -462,10 +528,12 @@ discountValueEl.min = 0;
 discountValueEl.max = 100;
 
 discountValueEl.addEventListener("input", () => {
-    const value = Number(discountValueEl.value);
+    if (Number(discountValueEl.value) > 100) {
+        discountValueEl.value = 100;
+    }
 
-    if (discountValueEl.value !== "") {
-        discountValueEl.value = Math.max(0, Math.min(100, value || 0));
+    if (Number(discountValueEl.value) < 0) {
+        discountValueEl.value = 0;
     }
 
     calculateTotals();
@@ -473,9 +541,13 @@ discountValueEl.addEventListener("input", () => {
 
 cashGivenEl.addEventListener("input", calculateTotals);
 
-// INISIALISASI
+// =====================================
+// 13. JALANKAN APLIKASI
+// =====================================
+
 renderProducts();
 renderCart();
 renderHistory();
 
-console.log("Kasir Pro siap digunakan!");
+console.log("Aplikasi Kasir Pro berhasil dijalankan.");
+console.log("Total transaksi tersimpan:", orderHistory.length);
